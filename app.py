@@ -1,3 +1,11 @@
+import os
+import streamlit as st
+
+# Show the file path
+st.write("📂 Current file location:", os.path.abspath(__file__))
+
+# --- your existing code starts below ---
+
 import streamlit as st
 from openai import OpenAI
 import os
