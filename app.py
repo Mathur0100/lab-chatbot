@@ -1,39 +1,43 @@
 import streamlit as st
-import json
-import random
-import openai
+from openai import OpenAI
+import os
+from dotenv import load_dotenv
 
-# Load equipment data
-with open("equipment_data.json", "r") as f:
-    equipment_data = json.load(f)
+# Load API key from .env file (recommended)
+load_dotenv()
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-st.set_page_config(page_title="Lab Equipment Maintenance Bot", page_icon="🤖")
+# Streamlit page config
+st.set_page_config(page_title="College Chatbot", page_icon="🎓")
+st.title("🎓 College Chatbot")
 
-st.title("🤖 Predictive Maintenance Chatbot for Lab Equipment")
-st.write("Ask me about lab equipment, maintenance schedules, or troubleshooting!")
+# Initialize session state
+if "messages" not in st.session_state:
+    st.session_state.messages = [
+        {"role": "system", "content": "You are a helpful college assistant. Answer questions about academics, events, and campus life in a friendly way."}
+    ]
 
-# Input for user query
-user_query = st.text_input("💬 Ask your question:")
+# Display chat history
+for msg in st.session_state.messages:
+    if msg["role"] != "system":  # don't show system messages
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
 
-# Load API key from Streamlit Secrets
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+# User input
+if prompt := st.chat_input("Ask me anything about college life..."):
+    # Add user message
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
 
-def get_equipment_response(query):
-    # Simple rule-based search in dataset
-    for item in equipment_data:
-        if item["name"].lower() in query.lower():
-            return f"**{item['name']}**:\n\n- Last serviced: {item['last_service']}\n- Next due: {item['next_service']}\n- Common issue: {item['common_issue']}"
-    
-    # If not found in dataset → use AI
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "system", "content": "You are a helpful assistant for predictive maintenance of lab equipment."},
-                  {"role": "user", "content": query}]
-    )
-    return response.choices[0].message["content"]
+    # Generate bot response
+    with st.chat_message("assistant"):
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=st.session_state.messages
+        )
+        reply = response.choices[0].message.content
+        st.markdown(reply)
 
-if st.button("Get Answer"):
-    if user_query:
-        with st.spinner("Thinking..."):
-            answer = get_equipment_response(user_query)
-        st.success(answer)
+    # Save assistant reply
+    st.session_state.messages.append({"role": "assistant", "content": reply})
